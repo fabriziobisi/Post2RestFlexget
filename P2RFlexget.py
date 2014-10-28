@@ -1,16 +1,28 @@
+#from __future__ import unicode_literals, division, absolute_import
+import logging
+from flexget import plugin
+from flexget.event import event
 import requests
 import json
 import time
 
+log = logging.getLogger('download')
+
 class Post2RestFlexget(object):
 
-    def validator(self):
-        from flexget import validator
-        d = validator.factory('dict')
-        d.accept('url', key='url')
-        d.accept('dict', key='data').accept_any_key('any')
-        d.accept('list', key='rewrite').accept('dict').accept_any_key('any')
-        return d
+    schema = {
+        'oneOf': [
+            {
+                'type': 'object',
+                'properties': {
+                    'url': {'type': 'string'},
+                    'data': {'type': 'object'},
+                    'rewrite': {'type': 'array', "items": {"type": "object"}}
+                },
+                'additionalProperties': False
+            },
+        ]
+    }
 
     @staticmethod
     def serialize(o):
@@ -19,8 +31,8 @@ class Post2RestFlexget(object):
         else:
            return o
 
-    def on_task_output(self,task):
-        config = task.config['post2rest']
+    def on_task_output(self,task, config):
+        #config = task.config['post2rest']
         for entry in task.entries:
             entry_dict = dict(entry)
             if 'data' in config:
@@ -41,8 +53,6 @@ class Post2RestFlexget(object):
             headers = {'content-type': 'application/json'}
             requests.post(config['url'], data=data, headers=headers)
 
-try:
-    from flexget.plugin import register_plugin
-    register_plugin(Post2RestFlexget, 'post2rest')
-except:
-    pass
+@event('plugin.register')
+def register_plugin():
+    plugin.register(Post2RestFlexget, 'post2rest', api_ver=2)
